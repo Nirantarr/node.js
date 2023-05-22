@@ -1,40 +1,66 @@
-const http = require('http');
 const fs = require('fs');
-
 const data = JSON.parse(fs.readFileSync('data.json','utf-8')); // json is read
+const cart = data.carts;
+// console.log(cart[1]);
 const index = fs.readFileSync('index.html','utf-8'); // index.html is read
-const product = data.carts; // json data is fetched
-const server = http.createServer((req,res)=>{
 
-    if((req.url).startsWith('/product')){ //used javascirpt to get /product url
-        const id = req.url.split('/')[2]; // we get the /product/1 
-        // console.log(id);
-        const prd = product.find(p=>p.id===(+id)); // we find the received id in data json file.
-        // console.log(prd);
-        res.setHeader("Content-Type","text/html");
-        let modifiedIndex = index.replace('**50**',prd.userId).replace("**10**",prd.totalQuantity).replace('**20**',prd.total) // we replaced the content with values
-        res.end(modifiedIndex);
-        return;
-    }
+const express = require('express');
+const server = express();
 
-    switch(req.url){ //these are cases for server side rendering
-        case '/':
-            res.setHeader("Content-Type","text/html");
-            let modifiedIndex = index.replace('**50**',product.userId).replace("**10**",product.totalQuantity).replace('**20**',product.total)
-            res.end(modifiedIndex);
-            break;
-    
-        case '/json':
-            res.setHeader("Content-Type","application/json");
-            res.end(JSON.stringify(data));
-            break;
-    
-        default :
-            res.writeHead(404);
-            res.end();
-    }
-//  console.log("server started");
-//  res.setHeader("Content-Type","application/json")
-//  res.end(JSON.stringify(data));
+// bodyparse  use to get data from body 
+server.use(express.json()); 
+
+// ========CREATE-READ-UPDATE-DELETE (CRUD) ===========
+const createProduct=(req,res)=>{
+    res.json(req.body);
+    cart.push(req.body);
+}
+const searchAllProduct=(req,res)=>{
+    res.json(cart);
+}
+const searchProduct=(req,res)=>{
+    const id = (+req.params.id); //+ symbol changes string to number.
+    const product = cart.find(p=>p.id===id);
+    res.json(product);
+}
+const replaceProduct=(req,res)=>{
+    const id = (+req.params.id);
+    const productIndex = cart.findIndex(p=>p.id===id);
+    const product= cart[productIndex];
+    cart.splice(productIndex,1,{...product,...req.body});
+    res.status(201).json("Updated");
+ }
+ const updateProduct =(req,res)=>{
+    const id = (+req.params.id);
+    const productIndex=cart.findIndex(p=>p.id===id);
+    const product= cart[productIndex];
+    cart.splice(productIndex,1,{...product,...req.body});
+    res.status(201).json("Updated");
+ }
+ const deleteProduct=(req,res)=>{
+    const id = (+req.params.id);
+    const productIndex=cart.findIndex(p=>p.id===id);
+    const product = cart[productIndex];
+    cart.splice(productIndex,1);
+    res.status(200).json("Deleted");
+}
+// CREATE API Type - alwasys use POST
+server.post('/products',createProduct)
+
+// READ API
+server.get('/products',searchAllProduct)
+// baseURL/ Api root - 'https://localhost:8080'
+server.get('/products/:id',searchProduct)
+
+// UPDATE API
+// In put the provided data overrides the existing data means new data will be shown and old all data will be erased.
+server.put('/products/:id',replaceProduct)
+// In patch the data gets comined with existing data.
+server.patch('/products/:id',updateProduct)
+
+// UPDATE API
+server.delete('/products/:id',deleteProduct)
+
+server.listen(8080,()=>{
+    console.log("server started at 8080");
 })
-server.listen(8080);
